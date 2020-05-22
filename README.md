@@ -1,5 +1,5 @@
 # MaisonDesJeunes
-Final exam for a Web course
+Final exam for a Web course<br>
 Website will work from a localhost or any hosted server. This should be used for learning or showing purposes.
 
 # Warning
