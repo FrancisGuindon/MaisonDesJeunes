@@ -1,0 +1,321 @@
+<?php
+const STATUT_DISABLED = 0;
+include "vars/vars.php";
+include "class/classUsager.php";
+include "class/classActivite.php";
+
+// Connexion à la base de données
+function connexionPOO(&$bd)
+{
+    global $host, $user, $pass, $databaseName;
+    try {
+        $bd = new PDO('mysql:host=' . $host . ';dbname=' . $databaseName . ';charset=utf8', $user, $pass);
+        $bd->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (Exception $e) {
+        echo "Échec lors de la connexion à Mysql : " . $e->getMessage();
+    }
+}
+
+// Lorsqu'un usager tente de se connecter, vérifier s'il existe ou non / User authentification
+function validerUsagerPOO($bd, $courriel, $password)
+{
+    $requete = $bd->prepare("SELECT motPasse from usager where courriel=:courriel");
+    $requete->execute(array('courriel' => $courriel));
+
+    $requete->setFetchMode(PDO::FETCH_OBJ);
+    while ($ligne = $requete->fetch()) {
+        if (password_verify($password, $ligne->motPasse))
+            return true;
+    }
+
+    return false;
+}
+
+/* Cette fonction sert a normaliser les deux champs (fields) non-essentials (NE) afin de
+  les mettre null et non '' afin que la BD les accepte */
+function normalizeNEFields(&$telephone, &$dateNaissance)
+{
+    $telephone = $telephone == '' ? null : $telephone;
+    $dateNaissance = $dateNaissance == '' ? null : $dateNaissance;
+}
+
+// Vérifier si la personne qui est sur cette page est un admin. Sinon, redirige la personne sur index.php
+function verifAdmin()
+{
+    if ($_SESSION['statut'] < 2) {
+        header("Location: index.php");
+    }
+}
+
+function selectActiviteBD($bd, $orderby = "idActivite")
+{
+    $requete = $bd->prepare("SELECT * FROM activite ORDER BY " . $orderby);
+    $requete->execute();
+    $requete->setFetchMode(PDO::FETCH_OBJ);
+
+    return $requete;
+}
+
+// Montrer les activités dans supprimerActivite.php
+function showActivitesDelete($tousActivite)
+{
+    if ($tousActivite->execute()) {
+        while ($resultat = $tousActivite->fetch()) {
+            print("
+                <tr>
+					<th><input type='checkbox' name='chk$resultat->idActivite'></th>
+                    <td>$resultat->nom</td>
+                    <td class='text-center'>$resultat->nbParticipantMin</td>
+					<td class='text-center'>$resultat->nbParticipantMax</td>
+                    <td>$resultat->lien</td>
+                    <td>$resultat->description</td>
+					<td>$resultat->endroit</td>
+                    <td>Condition</td>
+                </tr>
+        ");
+        }
+    }
+}
+
+// Supprimer une activité dans la BD
+function supprimerActiviteBD($bd, $tousActivite)
+{
+    $activite = new Activite();
+    foreach ($tousActivite as $unActivite) {
+        $idActivite = $unActivite->idActivite;
+        $var = "chk" . $idActivite;
+        if (isset($_POST[$var])) {
+            $activite->setIdActivite($idActivite);
+            $activite->supprimerActivite($bd);
+        }
+    }
+}
+
+// Sélectionner les users qui ont un statut de 0 (inactif)
+function selectInactiveUsers($bd)
+{
+    $requete = $bd->prepare("SELECT * FROM usager WHERE statut = :where ORDER BY dateInscription DESC");
+    $requete->execute(array('where' => STATUT_DISABLED));
+    $requete->setFetchMode(PDO::FETCH_OBJ);
+
+    return $requete;
+}
+
+// Afficher les utilisateurs qui peuvent être activés et qui sont couramment inactif dans activerUsager.php
+function showUsersActivate($tousUsers)
+{
+    if ($tousUsers->execute()) {
+        while ($resultat = $tousUsers->fetch()) {
+            print("
+                <tr>
+					<th><input type='checkbox' name='chk$resultat->idUsager'></th>
+                    <td>$resultat->prenom</td>
+                    <td>$resultat->nom</td>
+					<td>$resultat->courriel</td>
+                    <td>$resultat->telephone</td>
+                    <td>$resultat->dateNaissance</td>
+					<td>$resultat->dateInscription</td>
+                </tr>
+        ");
+        }
+    }
+}
+
+// Sélectionner tous les users
+function selectAllUsers($bd)
+{
+    $requete = $bd->prepare("SELECT * FROM usager;");
+    $requete->setFetchMode(PDO::FETCH_OBJ);
+
+    return $requete;
+}
+
+// Afficher tous les utilisateurs pour modifierUsager.php
+function showUsersModify($tousUsers)
+{
+    print("
+<p>Pour modifier un compte, cliquer sur le lien «Modifier» à droite des informations.</p>
+<form id='formModifierU' method='post'>
+    <table class='table'>
+        <thead class='thead-dark'>
+        <tr>
+            <th scope='col'>Statut</th>
+            <th scope='col'>Prénom</th>
+            <th scope='col'>Nom</th>
+            <th scope='col'>Courriel</th>
+            <th scope='col'>Téléphone</th>
+            <th scope='col'>Date de naissance</th>
+            <th scope='col'>Date d'inscription (UTC)</th>
+            <th scope='col'>Modifier usager</th>
+        </tr>
+        </thead>
+        <tbody>
+    ");
+    if ($tousUsers->execute()) {
+        while ($resultat = $tousUsers->fetch()) {
+            print("
+            <tr>
+                <td>" . getStatutName($resultat->statut) . "</td>
+                <td>$resultat->prenom</td>
+                <td>$resultat->nom</td>
+                <td>$resultat->courriel</td>
+                <td>$resultat->telephone</td>
+                <td>$resultat->dateNaissance</td>
+                <td>$resultat->dateInscription</td>
+                <td><a href='#' onclick='submitModifierForm($resultat->idUsager)'>Modifier</a></td>
+            </tr>
+
+    ");
+        }
+    }
+
+    print("
+            </tbody>
+    </table>
+</form>
+    ");
+}
+
+// Obtenir le nom du statut à partir de la base de données qui retourne 0, 1 ou 2
+function getStatutName($idUsager)
+{
+    switch ($idUsager) {
+        case 0:
+            return "Inactif";
+            break;
+        case 1:
+            return "Actif";
+            break;
+        case 2:
+            return "Responsable";
+            break;
+    }
+    return null;
+}
+
+// Après avoir envoyé le formulaire de changement d'un user, modifier le user
+function modifyOneUser($bd, $idUsager)
+{
+    $requete = $bd->prepare("SELECT * FROM usager WHERE idUsager = :idUsager");
+    $requete->execute(array('idUsager' => $idUsager));
+    $requete->setFetchMode(PDO::FETCH_OBJ);
+    $user = $requete->fetch();
+
+    print("
+    <br>
+<form action='modifierUsager.php?action=confirmModifier&id=$user->idUsager' method='POST'>
+    <label class='sr-only' for='inlineFormInputGroup'>Prénom</label>
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Prénom</div>
+        </div>
+        <input name='prenom' type='text' class='form-control' value='$user->prenom'>
+    </div>
+
+    <label class='sr-only'>Nom</label>
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Nom</div>
+        </div>
+        <input name='nom' type='text' class='form-control' value='$user->nom'>
+    </div>
+
+    <label class='sr-only' for='inlineFormInputGroup'>Courriel</label>
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Courriel</div>
+        </div>
+        <input name='courriel' type='text' class='form-control' value='$user->courriel'>
+    </div>
+
+    <label class='sr-only' for='inlineFormInputGroup'>Téléphone</label>
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Téléphone</div>
+        </div>
+        <input name='telephone' type='text' class='form-control' value='$user->telephone'>
+    </div>
+
+    <label class='sr-only' for='inlineFormInputGroup'>Date naissance</label>
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Date naissance</div>
+        </div>
+        <input name='dateNaissance' class='form-control textbox-n' type='text' onfocus='(this.type=\"date\")' id='date' value='$user->dateNaissance'>
+    </div>
+
+    <label class='sr-only' for='inlineFormInputGroup'>Statut</label>
+
+    <div class='input-group mb-2'>
+        <div class='input-group-prepend'>
+            <div class='input-group-text'>Statut</div>
+        </div>
+
+        <div class='form-control d-flex justify-content-center form-check-inline'>
+            <input id='statutInactif' name='statut' class='form-check-input' type='radio' value='0' ");
+    print($user->statut == 0 ? 'checked' : '');
+    print(">
+            <label for='statutInactif' class='form-check-label'>Inactif</label>
+        </div>
+
+        <div class='form-control d-flex justify-content-center form-check-inline'>
+            <input id='statutParticipant' name='statut' class='form-check-input' type='radio' value='1' ");
+    print($user->statut == 1 ? 'checked' : '');
+    print(">
+            <label for='statutParticipant' class='form-check-label'>Participant</label>
+        </div>
+
+        <div class='form-control d-flex justify-content-center form-check-inline'>
+            <input id='statutResponsable' name='statut' class='form-check-input' type='radio' value='2' ");
+    print($user->statut == 2 ? 'checked' : '');
+    print(">
+            <label for='statutResponsable' class='form-check-label'>Responsable</label>
+        </div>
+
+    </div>
+
+    <br>
+    <button class='btn btn-success' type='submit'>Sauvegarder</button>
+    <a class='btn btn-light' type='reset' href='modifierUsager.php'>Annuler</a>
+</form>
+    ");
+}
+
+// Activer le user inactif
+function activerUser($bd, $inactiveUsers)
+{
+    foreach ($inactiveUsers as $unUser) {
+        $idUsager = $unUser->idUsager;
+        $var = "chk" . $idUsager;
+        if (isset($_POST[$var])) {
+            $user = new Usager();
+            $user->setIdUsager($idUsager);
+            $user->activerUser($bd);
+
+            $courriel = $user->getCourrielBD($bd);
+            return sendActiveMail($courriel);
+        }
+    }
+}
+
+// Envoyer le message de changement de statut (inactif -> actif)
+function sendActiveMail($courriel)
+{
+    $sujet = "Vous êtes désormais déclaré actif sur Maison Des Jeunes!";
+    $message = "Bonjour, \n 
+    Vous êtes désormais inscrit comme participant sur Maison Des Jeunes. Vous pouvez alors vous inscrire aux évènements des prochains jours!\n 
+    Merci de votre enthousiasme! \n 
+    - L'équipe chez Maison Des Jeunes";
+
+    if (mail($courriel, $sujet, $message)) {
+        return array(
+            "positif" => true,
+            "msg" => "Un courriel a été envoyé a l'utilisateur nouvellement activé."
+        );
+    } else {
+        return array(
+            "positif" => false,
+            "msg" => "L'utilisateur a été activé mais le courriel de bienvenue n'a pas été envoyé. Veuillez communiquer avec le développeur de ce site."
+        );
+    }
+}

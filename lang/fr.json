@@ -1,0 +1,23 @@
+{
+  "nav_accueil": "Accueil",
+  "nav_apropos": "À propos",
+  "nav_rejoindre": "Nous Rejoindre",
+  "nav_gestion_activites": "Gestion des activités",
+  "nav_acti_ajouter_activites": "Ajouter activités",
+  "nav_acti_modifier_activites": "Modifier activités",
+  "nav_acti_supprimer_activites": "Suprimer activitiés",
+  "nav_gestion_horaire": "Gestion de l'horaire",
+  "nav_hora_modifier": "Modifier horaire",
+  "nav_gestion_usager": "Gestion des usagers",
+  "nav_user_activer": "Activer usager",
+  "nav_user_modifier": "Modifier usager",
+  "nav_user_supprimer": "Supprimer usager",
+  "nav_deconnexion": "Déconnexion",
+  "nav_connexion": "Se connecter",
+  "nav_inscription": "S'inscrire",
+  "nav_activites": "Activité",
+  "nav_horaire": "Horaire",
+
+  "notre_horaire": "Notre horaire",
+  "horaire_desc": "Voici les activités et ateliers qui sont offerts. Au plaisirs de se rencontrer virtuellement ou en personne."
+}

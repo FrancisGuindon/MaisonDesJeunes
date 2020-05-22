@@ -1,0 +1,23 @@
+{
+  "nav_accueil": "Home",
+  "nav_apropos": "About us",
+  "nav_rejoindre": "Contact us",
+  "nav_gestion_activites": "Manage activities",
+  "nav_acti_ajouter_activites": "Add activities",
+  "nav_acti_modifier_activites": "Modify activities",
+  "nav_acti_supprimer_activites": "Delete activities",
+  "nav_gestion_horaire": "Manage schedule",
+  "nav_hora_modifier": "Modify schedule",
+  "nav_gestion_usager": "Manage users",
+  "nav_user_activer": "Activate users",
+  "nav_user_modifier": "Modify users",
+  "nav_user_supprimer": "Delete users",
+  "nav_deconnexion": "Logout",
+  "nav_connexion": "Login",
+  "nav_inscription": "Sign up",
+  "nav_activites": "Activities",
+  "nav_horaire": "Schedule",
+
+  "notre_horaire": "Our schedule",
+  "horaire_desc": "Here are the activities and workshops that are offered. It is a pleasure to meet virtually or in real life."
+}
